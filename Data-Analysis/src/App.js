@@ -8,6 +8,7 @@ function App() {
   const [content, setContent] = useState('');
   const [analysisResult, setAnalysisResult] = useState(null);
   const [averageScores, setAverageScores] = useState({});
+  const [wordCloudUrl, setWordCloudUrl] = useState('');
 
   useEffect(() => {
     axios.get('http://localhost:8000/average_scores')
@@ -26,13 +27,21 @@ function App() {
         setContent('');
 
         // Trigger real-time analysis after adding a new review
-        axios.post('http://localhost:8000/analyze_data', { book_name: bookName, score: limitedScore, content })
-          .then(analysisResponse => {
-            console.log('Real-time analysis result:', analysisResponse.data);
-            // Update the state with analysis result
-            setAnalysisResult(analysisResponse.data);
-          })
-          .catch(error => console.error('Error performing real-time analysis:', error));
+        axios.post('http://localhost:8000/analyze_data', { book_name: bookName, score: limitedScore, content }, { responseType: 'arraybuffer' })
+  .then(analysisResponse => {
+    const imgData = new Uint8Array(analysisResponse.data);
+    const blob = new Blob([imgData], { type: 'image/png' });
+    const dataUrl = URL.createObjectURL(blob);
+    setWordCloudUrl(dataUrl);
+
+    // Update the state with analysis result
+    setAnalysisResult(analysisResponse.data);
+  })
+  .catch(error => console.error('Error performing real-time analysis:', error));
+
+
+
+
 
         // Update average scores after adding a new review
         axios.get('http://localhost:8000/average_scores')
@@ -59,22 +68,17 @@ function App() {
       </div>
       <button onClick={addReview}>리뷰 추가</button>
 
-      {analysisResult && (
-        <div>
-          <h2>실시간 분석 결과</h2>
-          <p>평균 점수: {analysisResult.average_score}</p>
-          <p>리뷰 수: {analysisResult.review_count}</p>
-        </div>
-      )}
-
       <h2>책별 평균 점수</h2>
       <ul>
         {Object.entries(averageScores).map(([book, avgScore]) => (
           <li key={book}>
-            <strong>{book}</strong> - 평균 점수: {avgScore}
+            <strong>{book}</strong> - 평균 점수: {avgScore.toFixed(1)}
           </li>
         ))}
       </ul>
+
+      <h2>워드클라우드</h2>
+      {wordCloudUrl && <img src={wordCloudUrl} alt="Word Cloud" />}
     </div>
   );
 }

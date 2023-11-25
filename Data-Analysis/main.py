@@ -1,9 +1,14 @@
 # main.py
-from fastapi import FastAPI, HTTPException
+# Install the wordcloud library using: pip install wordcloud
+from fastapi import FastAPI, HTTPException, File, UploadFile, Response
+from starlette.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
 from collections import defaultdict
+from wordcloud import WordCloud
+import io
+import matplotlib.pyplot as plt
 
 app = FastAPI()
 
@@ -30,15 +35,21 @@ async def add_review(review: Review):
 
 @app.post("/analyze_data")
 async def analyze_data(review: Review):
-    analysis_result = {
-        "average_score": sum(r.score for r in reviews) / len(reviews),
-        "review_count": len(reviews),
-    }
-    return analysis_result
+    word_cloud_image = generate_word_cloud()
 
-@app.get("/get_reviews")
-async def get_reviews():
-    return reviews
+    # Convert the image to bytes
+    img_byte_array = io.BytesIO()
+    word_cloud_image.save(img_byte_array, format="PNG")
+    img_byte_array = img_byte_array.getvalue()
+
+    return StreamingResponse(io.BytesIO(img_byte_array), media_type="image/png")
+
+def generate_word_cloud():
+    all_reviews_content = ' '.join(review.content for review in reviews)
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(all_reviews_content)
+
+    # Return the word cloud image
+    return wordcloud.to_image()
 
 @app.get("/average_scores")
 async def average_scores():
