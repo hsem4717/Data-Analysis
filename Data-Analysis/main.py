@@ -1,5 +1,3 @@
-# main.py
-# Install the wordcloud library using: pip install wordcloud
 from fastapi import FastAPI, HTTPException, File, UploadFile, Response
 from starlette.responses import StreamingResponse
 from pydantic import BaseModel
@@ -53,12 +51,15 @@ def generate_word_cloud():
 
 @app.get("/average_scores")
 async def average_scores():
-    book_scores = defaultdict(list)
+    book_data = defaultdict(lambda: {"scores": [], "count": 0})
+    
     for review in reviews:
-        book_scores[review.book_name].append(review.score)
+        book_data[review.book_name]["scores"].append(review.score)
+        book_data[review.book_name]["count"] += 1
 
-    average_scores = {}
-    for book, scores in book_scores.items():
-        average_scores[book] = sum(scores) / len(scores)
+    result = {}
+    for book, data in book_data.items():
+        average_score = sum(data["scores"]) / len(data["scores"]) if data["scores"] else 0
+        result[book] = {"average_score": average_score, "review_count": data["count"]}
 
-    return average_scores
+    return result
